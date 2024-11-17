@@ -273,7 +273,7 @@ def fetch_and_process_data(json_url, specific_RSS=[], count=5):
             friends_data = category['link_list']
             break
 
-    total_friends = len(friends_data['friends'])
+    total_friends = len(friends_data) # not friends_data['friends']
     active_friends = 0
     error_friends = 0
     total_articles = 0
