@@ -267,13 +267,7 @@ def fetch_and_process_data(json_url, specific_RSS=[], count=5):
         logging.error(f"无法获取链接：{json_url} ：{e}", exc_info=True)
         return None
 
-    # Only get friends from child which have id_name = "cf-links"
-    for category in friends_data['friends']:
-        if category['id_name'] == "cf-links":
-            friends_data = category['link_list']
-            break
-
-    total_friends = len(friends_data) # not friends_data['friends']
+    total_friends = len(friends_data['friends'])
     active_friends = 0
     error_friends = 0
     total_articles = 0
