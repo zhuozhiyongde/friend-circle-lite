@@ -214,7 +214,17 @@ def process_friend(friend, session, count, specific_RSS=[]):
     返回：
     dict: 包含朋友博客信息的字典。
     """
-    name, blog_url, avatar = friend
+    # name, blog_url, avatar = friend
+    # Change format to:
+    # {
+    #     "name": "xxx",
+    #     "intro": "description",
+    #     "link": "https://xxx.com/",
+    #     "avatar": "https://cravatar.cn/avatar/xxx",
+    # },
+    name = friend.get("name", "")
+    blog_url = friend.get("link", "")
+    avatar = friend.get("avatar", "")
     
     # 如果 specific_RSS 中有对应的 name，则直接返回 feed_url
     if specific_RSS is None:
@@ -277,6 +287,12 @@ def fetch_and_process_data(json_url, specific_RSS=[], count=5):
     except Exception as e:
         print(f"无法获取该链接：{json_url} , 出现的问题为：{e}")
         return None
+
+    # Only get friends from child which have id_name = "cf-links"
+    for category in friends_data['friends']:
+        if category['id_name'] == "cf-links":
+            friends_data = category['link_list']
+            break
 
     total_friends = len(friends_data['friends'])
     active_friends = 0
