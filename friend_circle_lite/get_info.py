@@ -294,7 +294,7 @@ def fetch_and_process_data(json_url, specific_RSS=[], count=5):
             friends_data = category['link_list']
             break
 
-    total_friends = len(friends_data['friends'])
+    total_friends = len(friends_data) # not friends_data['friends']
     active_friends = 0
     error_friends = 0
     total_articles = 0
@@ -304,7 +304,7 @@ def fetch_and_process_data(json_url, specific_RSS=[], count=5):
     with ThreadPoolExecutor(max_workers=10) as executor:
         future_to_friend = {
             executor.submit(process_friend, friend, session, count, specific_RSS): friend
-            for friend in friends_data['friends']
+            for friend in friends_data # not friends_data['friends']
         }
         
         for future in as_completed(future_to_friend):
