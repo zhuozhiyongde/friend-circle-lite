@@ -87,9 +87,9 @@ def check_feed(friend, session):
     for feed_type, path in possible_feeds:
         feed_url = rsslink if rsslink else blog_url + path
         try:
-            response = session.get(feed_url, headers=headers, timeout=timeout)
+            response = session.get(url, headers=headers, timeout=timeout)
             if response.status_code == 200:
-                return [feed_type, feed_url]
+                return [url.split('/')[-1].split('.')[0], url]
         except requests.RequestException:
             continue
 
