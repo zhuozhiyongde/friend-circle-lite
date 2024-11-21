@@ -53,7 +53,6 @@ def format_published_time(time_str):
     return shanghai_time.strftime('%Y-%m-%d %H:%M')
 
 
-
 def check_feed(friend, session):
     """
     检查博客的 RSS 或 Atom 订阅链接。
@@ -93,9 +92,8 @@ def check_feed(friend, session):
                 return [url.split('/')[-1].split('.')[0], url]
         except requests.RequestException:
             continue
-
-    return ['none', friend.get("link", "")]
-
+    logging.warning(f"无法找到 {blog_url} 的订阅链接")
+    return ['none', blog_url]
 
 def parse_feed(url, session, count=5, blog_url=''):
     """
@@ -213,10 +211,10 @@ def process_friend(friend, session, count, specific_RSS=[]):
     if rss_feed:
         feed_url = rss_feed
         feed_type = 'specific'
-        print(f"========“{name}”的博客“{blog_url} ”为特定RSS源“{feed_url}”========")
+        logging.info(f"“{name}”的博客“{blog_url}”为特定RSS源“{feed_url}”")
     else:
         feed_type, feed_url = check_feed(blog_url, session)
-        print(f"========“{name}”的博客“{blog_url} ”的feed类型为“{feed_type}”========")
+        logging.info(f"“{name}”的博客“{blog_url}”的feed类型为“{feed_type}”")
 
     if feed_type != 'none':
         feed_info = parse_feed(feed_url, session, count, blog_url)
