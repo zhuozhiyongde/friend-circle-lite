@@ -55,15 +55,15 @@ def format_published_time(time_str):
     return shanghai_time.strftime('%Y-%m-%d %H:%M')
 
 
-def check_feed(blog_url, session):
+def check_feed(friend, session):
     """
     检查博客的 RSS 或 Atom 订阅链接。
 
-    此函数接受一个博客地址，尝试在其后拼接 '/atom.xml', '/rss2.xml' 和 '/feed'，并检查这些链接是否可访问。
+    此函数接受一个博客，尝试在提取后拼接 '/atom.xml', '/rss2.xml' 和 '/feed'，并检查这些链接是否可访问。
     Atom 优先，如果都不能访问，则返回 ['none', 源地址]。
 
     参数：
-    blog_url (str): 博客的基础 URL。
+    friend (dict): 包含朋友信息的字典。
     session (requests.Session): 用于请求的会话对象。
 
     返回：
@@ -72,27 +72,31 @@ def check_feed(blog_url, session):
             如果 feed 链接可访问，则返回 ['feed', feed_url]；
             如果都不可访问，则返回 ['none', blog_url]。
     """
-    
-    possible_feeds = [
-        ('atom', '/atom.xml'),
-        ('rss', '/rss.xml'), # 2024-07-26 添加 /rss.xml内容的支持
-        ('rss2', '/rss2.xml'),
-        ('feed', '/feed'),
-        ('feed2', '/feed.xml'), # 2024-07-26 添加 /feed.xml内容的支持
-        ('feed3', '/feed/'),
-        ('index', '/index.xml') # 2024-07-25 添加 /index.xml内容的支持
-    ]
+    rsslink = friend.get("rss", "")
+    if rsslink:
+        urls = [rsslink]
+    else:
+        blog_url = friend.get("link", "").rstrip('/')
+        urls = [
+            f"{blog_url}/atom.xml",
+            f"{blog_url}/rss.xml", # 2024-07-26 添加 /rss.xml内容的支持
+            f"{blog_url}/rss2.xml",
+            f"{blog_url}/feed",
+            f"{blog_url}/feed.xml", # 2024-07-26 添加 /feed.xml内容的支持
+            f"{blog_url}/feed/", # 2024-07-26 添加 /feed/内容的支持
+            f"{blog_url}/index.xml" # 2024-07-25 添加 /index.xml内容的支持
+        ]
 
-    for feed_type, path in possible_feeds:
-        feed_url = blog_url.rstrip('/') + path
+    for url in urls:
         try:
-            response = session.get(feed_url, headers=headers, timeout=timeout)
+            response = session.get(url, headers=headers, timeout=timeout)
             if response.status_code == 200:
-                return [feed_type, feed_url]
+                return [url.split('/')[-1].split('.')[0], url]
         except requests.RequestException:
             continue
+
     logging.warning(f"无法找到 {blog_url} 的订阅链接")
-    return ['none', blog_url]
+    return ['none', friend.get("link", "")]
 
 def parse_feed(url, session, count=5):
     """
@@ -189,10 +193,10 @@ def process_friend(friend, session, count, specific_RSS=[]):
     if rss_feed:
         feed_url = rss_feed
         feed_type = 'specific'
-        logging.info(f"“{name}”的博客“{blog_url}”为特定RSS源“{feed_url}”")
+        print(f"======== “{name}” 的博客 “{blog_url}” 为特定RSS源 “{feed_url}” ========")
     else:
-        feed_type, feed_url = check_feed(blog_url, session)
-        logging.info(f"“{name}”的博客“{blog_url}”的feed类型为“{feed_type}”")
+        feed_type, feed_url = check_feed(friend, session)
+        print(f"======== “{name}” 的博客 “{blog_url}” 的feed类型为 “{feed_type}” ========")
 
     if feed_type != 'none':
         feed_info = parse_feed(feed_url, session, count)
