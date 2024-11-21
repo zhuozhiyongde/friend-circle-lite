@@ -71,8 +71,22 @@ def check_feed(friend, session):
             如果都不可访问，则返回 ['none', blog_url]。
     """
     rsslink = friend.get("rss", "")
+    blog_url = friend.get("link", "")
+
+    possible_feeds = [
+        ('atom', '/atom.xml'),
+        ('rss', '/rss.xml'), # 2024-07-26 添加 /rss.xml内容的支持
+        ('rss2', '/rss2.xml'),
+        ('feed', '/feed'),
+        ('feed2', '/feed.xml'), # 2024-07-26 添加 /feed.xml内容的支持
+        ('feed3', '/feed/'),
+        ('index', '/index.xml') # 2024-07-25 添加 /index.xml内容的支持
+    ]
+
     if rsslink:
-        urls = [rsslink]
+        response = session.get(rsslink, headers=headers, timeout=timeout)
+        if response.status_code == 200:
+            return [rsslink.split('/')[-1].split('.')[0], rsslink]
     else:
         blog_url = friend.get("link", "").rstrip('/')
         urls = [
@@ -92,8 +106,9 @@ def check_feed(friend, session):
                 return [url.split('/')[-1].split('.')[0], url]
         except requests.RequestException:
             continue
+
     logging.warning(f"无法找到 {blog_url} 的订阅链接")
-    return ['none', blog_url]
+    return ['none', friend.get("link", "")]
 
 def parse_feed(url, session, count=5, blog_url=''):
     """
