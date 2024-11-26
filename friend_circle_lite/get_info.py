@@ -70,6 +70,8 @@ def check_feed(friend, session):
             如果 feed 链接可访问，则返回 ['feed', feed_url]；
             如果都不可访问，则返回 ['none', blog_url]。
     """
+    blog_url = friend.get("link", "")
+    rsslink = friend.get("rss", "")
     
     possible_feeds = [
         ('atom', '/atom.xml'),
