@@ -82,7 +82,7 @@ def check_feed(friend, session):
     ]
 
     for feed_type, path in possible_feeds:
-        feed_url = rsslink ? rsslink : blog_url + path
+        feed_url = rsslink if rsslink else blog_url + path
         try:
             response = session.get(url, headers=headers, timeout=timeout)
             if response.status_code == 200:
