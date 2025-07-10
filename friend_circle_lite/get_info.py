@@ -1,14 +1,36 @@
 import logging
 from datetime import datetime, timedelta, timezone
-from dateutil import parser
-import requests
 import re
+from urllib.parse import urljoin, urlparse
+from dateutil import parser
+from zoneinfo import ZoneInfo
+import requests
 import feedparser
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # 标准化的请求头
-headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-us) AppleWebKit/534.50 (KHTML, like Gecko) Version/5.1 Safari/534.50'
+HEADERS_JSON = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/123.0.0.0 Safari/537.36 "
+        "(Friend-Circle-Lite/1.0; +https://github.com/willow-god/Friend-Circle-Lite)"
+    ),
+    "X-Friend-Circle": "1.0"
+}
+
+HEADERS_XML = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/123.0.0.0 Safari/537.36 "
+        "(Friend-Circle-Lite/1.0; +https://github.com/willow-god/Friend-Circle-Lite)"
+    ),
+    "Accept": "application/atom+xml, application/rss+xml, application/xml;q=0.9, */*;q=0.8",
+    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+    "Accept-Encoding": "gzip, deflate",
+    "Connection": "keep-alive",
+    "X-Friend-Circle": "1.0"
 }
 
 timeout = (10, 15) # 连接超时和读取超时，防止requests接受时间过长
@@ -53,6 +75,7 @@ def format_published_time(time_str):
     return shanghai_time.strftime('%Y-%m-%d %H:%M')
 
 
+
 def check_feed(friend, session):
     """
     检查博客的 RSS 或 Atom 订阅链接。
@@ -87,12 +110,11 @@ def check_feed(friend, session):
     for feed_type, path in possible_feeds:
         feed_url = rsslink if rsslink else blog_url + path
         try:
-            response = session.get(feed_url, headers=headers, timeout=timeout)
+            response = session.get(feed_url, headers=HEADERS_XML, timeout=timeout)
             if response.status_code == 200:
                 return [url.split('/')[-1].split('.')[0], url]
         except requests.RequestException:
             continue
-
     logging.warning(f"无法找到订阅链接：{friend}")
     return ['none', friend.get("link", "")]
 
@@ -112,14 +134,14 @@ def parse_feed(url, session, count=5, blog_url=''):
     dict: 包含网站名称、作者、原链接和每篇文章详细内容的字典。
     """
     try:
-        response = session.get(url, headers=headers, timeout=timeout)
+        response = session.get(url, headers=HEADERS_XML, timeout=timeout)
         response.encoding = response.apparent_encoding or 'utf-8'
         feed = feedparser.parse(response.text)
         
         result = {
-            'website_name': feed.feed.title if 'title' in feed.feed else '',
-            'author': feed.feed.author if 'author' in feed.feed else '',
-            'link': feed.feed.link if 'link' in feed.feed else '',
+            'website_name': feed.feed.title if 'title' in feed.feed else '', # type: ignore
+            'author': feed.feed.author if 'author' in feed.feed else '', # type: ignore
+            'link': feed.feed.link if 'link' in feed.feed else '', # type: ignore
             'articles': []
         }
         
@@ -136,7 +158,7 @@ def parse_feed(url, session, count=5, blog_url=''):
                 logging.warning(f"文章 {entry.title} 未包含任何时间信息, 请检查原文, 设置为默认时间")
             
             # 处理链接中可能存在的错误，比如ip或localhost
-            article_link = replace_non_domain(entry.link, blog_url) if 'link' in entry else ''
+            article_link = replace_non_domain(entry.link, blog_url) if 'link' in entry else '' # type: ignore
             
             article = {
                 'title': entry.title if 'title' in entry else '',
@@ -178,7 +200,19 @@ def replace_non_domain(link: str, blog_url: str) -> str:
     # path = re.sub(r'^https?://[^/]+', '', link)
     # print(path)
     
-    return link
+    try:
+        parsed = urlparse(link)
+        if 'localhost' in parsed.netloc or re.match(r'^\d{1,3}(\.\d{1,3}){3}$', parsed.netloc):  # IP地址或localhost
+            # 提取 path + query
+            path = parsed.path or '/'
+            if parsed.query:
+                path += '?' + parsed.query
+            return urljoin(blog_url.rstrip('/') + '/', path.lstrip('/'))
+        else:
+            return link  # 合法域名则返回原链接
+    except Exception as e:
+        logging.warning(f"替换链接时出错：{link}, error: {e}")
+        return link
 
 def process_friend(friend, session, count, specific_RSS=[]):
     """
@@ -193,17 +227,7 @@ def process_friend(friend, session, count, specific_RSS=[]):
     返回：
     dict: 包含朋友博客信息的字典。
     """
-    # name, blog_url, avatar = friend
-    # Change format to:
-    # {
-    #     "name": "xxx",
-    #     "intro": "description",
-    #     "link": "https://xxx.com/",
-    #     "avatar": "https://cravatar.cn/avatar/xxx",
-    # },
-    name = friend.get("name", "")
-    blog_url = friend.get("link", "")
-    avatar = friend.get("avatar", "")
+    name, blog_url, avatar = friend
     
     # 如果 specific_RSS 中有对应的 name，则直接返回 feed_url
     if specific_RSS is None:
@@ -212,10 +236,10 @@ def process_friend(friend, session, count, specific_RSS=[]):
     if rss_feed:
         feed_url = rss_feed
         feed_type = 'specific'
-        print(f"======== “{name}” 的博客 “{blog_url}” 为特定RSS源 “{feed_url}” ========")
+        logging.info(f"“{name}”的博客“ {blog_url} ”为特定RSS源“ {feed_url} ”")
     else:
-        feed_type, feed_url = check_feed(friend, session)
-        print(f"======== “{name}” 的博客 “{blog_url}” 的feed类型为 “{feed_type}” ========")
+        feed_type, feed_url = check_feed(blog_url, session)
+        logging.info(f"“{name}”的博客“ {blog_url} ”的feed类型为“{feed_type}”, feed地址为“ {feed_url} ”")
 
     if feed_type != 'none':
         feed_info = parse_feed(feed_url, session, count, blog_url)
@@ -261,7 +285,7 @@ def fetch_and_process_data(json_url, specific_RSS=[], count=5):
     session = requests.Session()
     
     try:
-        response = session.get(json_url, headers=headers, timeout=timeout)
+        response = session.get(json_url, headers=HEADERS_JSON, timeout=timeout)
         friends_data = response.json()
     except Exception as e:
         logging.error(f"无法获取链接：{json_url} ：{e}", exc_info=True)
@@ -308,7 +332,7 @@ def fetch_and_process_data(json_url, specific_RSS=[], count=5):
             'active_num': active_friends,
             'error_num': error_friends,
             'article_num': total_articles,
-            'last_updated_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            'last_updated_time': datetime.now(ZoneInfo("Asia/Shanghai")).strftime('%Y-%m-%d %H:%M:%S')
         },
         'article_data': article_data
     }
@@ -355,7 +379,7 @@ def marge_data_from_json_url(data, marge_json_url):
     dict: 合并后的文章信息字典，已去重处理
     """
     try:
-        response = requests.get(marge_json_url, headers=headers, timeout=timeout)
+        response = requests.get(marge_json_url, headers=HEADERS_JSON, timeout=timeout)
         marge_data = response.json()
     except Exception as e:
         logging.error(f"无法获取链接：{marge_json_url}，出现的问题为：{e}", exc_info=True)
