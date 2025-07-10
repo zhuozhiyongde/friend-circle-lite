@@ -112,7 +112,7 @@ def check_feed(friend, session):
         try:
             response = session.get(feed_url, headers=HEADERS_XML, timeout=timeout)
             if response.status_code == 200:
-                return [url.split('/')[-1].split('.')[0], url]
+                return [feed_url.split('/')[-1].split('.')[0], feed_url]
         except requests.RequestException:
             continue
     logging.warning(f"无法找到订阅链接：{friend}")
@@ -227,9 +227,9 @@ def process_friend(friend, session, count, specific_RSS=[]):
     返回：
     dict: 包含朋友博客信息的字典。
     """
-    name = friend['name']
-    blog_url = friend['link']
-    avatar = friend['avatar']
+    name = friend.get("name", "")
+    blog_url = friend.get("link", "")
+    avatar = friend.get("avatar", "")
     
     # 如果 specific_RSS 中有对应的 name，则直接返回 feed_url
     if specific_RSS is None:
