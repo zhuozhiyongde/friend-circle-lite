@@ -240,7 +240,7 @@ def process_friend(friend, session, count, specific_RSS=[]):
         feed_type = 'specific'
         logging.info(f"“{name}”的博客“ {blog_url} ”为特定RSS源“ {feed_url} ”")
     else:
-        feed_type, feed_url = check_feed(blog_url, session)
+        feed_type, feed_url = check_feed(friend, session)
         logging.info(f"“{name}”的博客“ {blog_url} ”的feed类型为“{feed_type}”, feed地址为“ {feed_url} ”")
 
     if feed_type != 'none':
