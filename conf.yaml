@@ -8,7 +8,7 @@
 #     marge_json_path:  请填写网络地址的json文件，用于合并，不带空格！！！
 spider_settings:
   enable: true
-  json_url: "https://cworld0.com/links.json"
+  json_url: "https://arthals.ink/links.json"
   article_count: 4
   merge_result:
     enable: false
@@ -60,7 +60,7 @@ smtp:
 #   name:               友链名称
 #   url:                指定的RSS地址
 specific_RSS:
-  - name: "阮一峰"
-    url: "http://feeds.feedburner.com/ruanyifeng"
+  # - name: "阮一峰"
+  #   url: "http://feeds.feedburner.com/ruanyifeng"
   # - name: "無名小栈"
   #   url: "https://blog.imsyy.top/rss.xml"
